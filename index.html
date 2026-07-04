@@ -1036,6 +1036,10 @@ document.getElementById('ctaBtn').addEventListener('click', function(e){
   ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
   btn.appendChild(ripple);
   setTimeout(()=>ripple.remove(), 650);
+  const subscribeSection = document.getElementById('subscribe');
+  if(subscribeSection){
+    subscribeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 });
 
 /* Form submission */
@@ -1068,9 +1072,28 @@ document.querySelector('.form-group').addEventListener('submit', function(e){
   .then(async (res) => {
     const data = await res.json().catch(() => ({}));
     if(res.ok && data.success){
-      feedback.style.color = 'var(--gold-bright)';
-      feedback.textContent = data.message || "You're on the list!";
       form.reset();
+      form.style.transition = 'opacity 0.3s ease';
+      form.style.opacity = '0';
+      setTimeout(() => {
+        form.style.display = 'none';
+        let successPanel = document.getElementById('subscribe-success');
+        if(!successPanel){
+          successPanel = document.createElement('div');
+          successPanel.id = 'subscribe-success';
+          successPanel.style.opacity = '0';
+          successPanel.style.transition = 'opacity 0.4s ease';
+          successPanel.style.textAlign = 'center';
+          successPanel.style.padding = '2rem 1rem';
+          form.parentNode.insertBefore(successPanel, form.nextSibling);
+        }
+        successPanel.innerHTML = ''
+          + '<p style="color:var(--gold-bright); font-family:\'Fraunces\', serif; font-size:1.4rem; margin-bottom:0.75rem;">You\'re on the list! \u2713</p>'
+          + '<p style="color:var(--muted); font-size:1rem; line-height:1.6;">'
+          + (data.message || 'Check your inbox for a welcome email.')
+          + '</p>';
+        requestAnimationFrame(() => { successPanel.style.opacity = '1'; });
+      }, 300);
     } else {
       feedback.style.color = '#ff6b6b';
       feedback.textContent = data.message || 'Something went wrong. Please try again.';
