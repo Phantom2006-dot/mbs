@@ -12,7 +12,7 @@ A landing page and waitlist app for the book "Mindset Before Skillset" by Oluwas
 - `fly.toml` / `Dockerfile` — Fly.io deployment config (previous host)
 
 ## Tech Stack
-- **Backend:** Python / Flask / SQLite
+- **Backend:** Python / Flask / NeonDB (PostgreSQL via psycopg2)
 - **Frontend:** Plain HTML/CSS/JavaScript, Three.js (CDN), Google Fonts (CDN)
 - **Email:** EmailJS REST API (server-side) for waitlist notification and welcome emails
 

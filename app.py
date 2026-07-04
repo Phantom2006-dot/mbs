@@ -1,8 +1,10 @@
 import os
 import re
-import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
+import psycopg2
+import psycopg2.extras
 import requests
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -17,12 +19,22 @@ _frontend_origins = os.environ.get("FRONTEND_ORIGIN", "*")
 _origins = [o.strip() for o in _frontend_origins.split(",")] if _frontend_origins != "*" else "*"
 CORS(app, resources={r"/api/*": {"origins": _origins}})
 
-# On fly.io, mount a persistent volume at /data (see fly.toml) so the
-# SQLite database survives deploys and restarts. Falls back to the local
-# directory for development.
-DB_PATH = os.environ.get("DB_PATH") or (
-    "/data/waitlist.db" if os.path.isdir("/data") else os.path.join(os.path.dirname(__file__), "waitlist.db")
-)
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable is not set")
+
+
+@contextmanager
+def get_db():
+    conn = psycopg2.connect(DATABASE_URL)
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 NOTIFY_EMAIL = "subscribe@mindsetbeforeskillset.com"
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -57,18 +69,18 @@ def send_emailjs(to_email, subject, message):
 
 
 def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS waitlist (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                email TEXT NOT NULL UNIQUE,
-                created_at TEXT NOT NULL
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS waitlist (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT,
+                    email TEXT NOT NULL UNIQUE,
+                    created_at TIMESTAMPTZ NOT NULL
+                )
+                """
             )
-            """
-        )
-        conn.commit()
 
 
 init_db()
@@ -94,13 +106,13 @@ def subscribe():
     created_at = datetime.now(timezone.utc).isoformat()
 
     try:
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute(
-                "INSERT INTO waitlist (name, email, created_at) VALUES (?, ?, ?)",
-                (name, email, created_at),
-            )
-            conn.commit()
-    except sqlite3.IntegrityError:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO waitlist (name, email, created_at) VALUES (%s, %s, %s)",
+                    (name, email, created_at),
+                )
+    except psycopg2.errors.UniqueViolation:
         return jsonify({"success": True, "message": "You're already on the waitlist!"}), 200
 
     notify_sent = False
@@ -155,8 +167,10 @@ def subscribe():
 
 @app.route("/api/waitlist/count", methods=["GET"])
 def waitlist_count():
-    with sqlite3.connect(DB_PATH) as conn:
-        count = conn.execute("SELECT COUNT(*) FROM waitlist").fetchone()[0]
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM waitlist")
+            count = cur.fetchone()[0]
     return jsonify({"count": count})
 
 
