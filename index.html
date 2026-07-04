@@ -1038,10 +1038,51 @@ document.getElementById('ctaBtn').addEventListener('click', function(e){
 });
 
 /* Form submission */
-document.querySelector('form').addEventListener('submit', function(e){
+document.querySelector('.form-group').addEventListener('submit', function(e){
   e.preventDefault();
-  alert('Thank you for subscribing! Check your email for exclusive content.');
-  this.reset();
+  const form = this;
+  const submitBtn = form.querySelector('.subscribe-btn');
+  const nameInput = form.querySelector('input[type="text"]');
+  const emailInput = form.querySelector('input[type="email"]');
+
+  let feedback = form.querySelector('.form-feedback');
+  if(!feedback){
+    feedback = document.createElement('p');
+    feedback.className = 'form-feedback';
+    feedback.style.marginTop = '14px';
+    feedback.style.fontSize = '0.95rem';
+    form.appendChild(feedback);
+  }
+
+  const originalBtnText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = 'Submitting...';
+  feedback.textContent = '';
+
+  fetch('/api/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: nameInput.value, email: emailInput.value })
+  })
+  .then(async (res) => {
+    const data = await res.json().catch(() => ({}));
+    if(res.ok && data.success){
+      feedback.style.color = 'var(--gold-bright)';
+      feedback.textContent = data.message || "You're on the list!";
+      form.reset();
+    } else {
+      feedback.style.color = '#ff6b6b';
+      feedback.textContent = data.message || 'Something went wrong. Please try again.';
+    }
+  })
+  .catch(() => {
+    feedback.style.color = '#ff6b6b';
+    feedback.textContent = 'Network error. Please try again in a moment.';
+  })
+  .finally(() => {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnText;
+  });
 });
 </script>
 </body>
