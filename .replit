@@ -33,3 +33,10 @@ waitForPort = 5000
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+EMAILJS_SERVICE_ID = "service_wkrjxkm"
+EMAILJS_TEMPLATE_ID = "template_gwvclv8"
+EMAILJS_PUBLIC_KEY = "4vtpi89mVXCMesncv"
