@@ -1,0 +1,1 @@
+- [EmailJS server-side sending](emailjs-server-side.md) — REST API needs a dashboard toggle + exact template field setup, or it silently fails.
