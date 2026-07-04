@@ -5,10 +5,24 @@ from datetime import datetime, timezone
 
 import requests
 from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "waitlist.db")
+# Allow the cPanel-hosted frontend (a different origin) to call this API.
+# Set FRONTEND_ORIGIN to your cPanel site's URL(s), comma-separated, e.g.
+#   FRONTEND_ORIGIN=https://mindsetbeforeskillset.com,https://www.mindsetbeforeskillset.com
+# Falls back to "*" (any origin) if not set, so it works out of the box.
+_frontend_origins = os.environ.get("FRONTEND_ORIGIN", "*")
+_origins = [o.strip() for o in _frontend_origins.split(",")] if _frontend_origins != "*" else "*"
+CORS(app, resources={r"/api/*": {"origins": _origins}})
+
+# On fly.io, mount a persistent volume at /data (see fly.toml) so the
+# SQLite database survives deploys and restarts. Falls back to the local
+# directory for development.
+DB_PATH = os.environ.get("DB_PATH") or (
+    "/data/waitlist.db" if os.path.isdir("/data") else os.path.join(os.path.dirname(__file__), "waitlist.db")
+)
 NOTIFY_EMAIL = "subscribe@mindsetbeforeskillset.com"
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -151,5 +165,11 @@ def index():
     return send_from_directory(".", "index.html")
 
 
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
