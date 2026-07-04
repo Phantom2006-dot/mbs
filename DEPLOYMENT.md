@@ -76,7 +76,7 @@ The `dist/` folder contains a ready-to-upload `index.html` with `API_BASE` alrea
 
 **If you used a different fly.io app name**, open `dist/index.html`, find this line near the top of the `<script>` block, and update it to match:
 ```js
-const API_BASE = 'https://YOUR-APP-NAME.fly.dev';
+const API_BASE = 'https://mbs-v8bxla.fly.dev';
 ```
 
 ### Upload steps
