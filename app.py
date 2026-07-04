@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from contextlib import contextmanager
@@ -9,6 +10,8 @@ import requests
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s")
+
 app = Flask(__name__)
 
 # Allow the cPanel-hosted frontend (a different origin) to call this API.
@@ -19,9 +22,12 @@ _frontend_origins = os.environ.get("FRONTEND_ORIGIN", "*")
 _origins = [o.strip() for o in _frontend_origins.split(",")] if _frontend_origins != "*" else "*"
 CORS(app, resources={r"/api/*": {"origins": _origins}})
 
+app.logger.info("=== STARTUP: CORS allowed origins = %r ===", _origins)
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL environment variable is not set")
+app.logger.info("=== STARTUP: DATABASE_URL is set ===")
 
 
 @contextmanager
@@ -35,6 +41,8 @@ def get_db():
         raise
     finally:
         conn.close()
+
+
 NOTIFY_EMAIL = "subscribe@mindsetbeforeskillset.com"
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -81,17 +89,42 @@ def init_db():
                 )
                 """
             )
+    app.logger.info("=== STARTUP: DB table ready ===")
 
 
 init_db()
 
 
+@app.before_request
+def log_request():
+    app.logger.info(
+        "REQUEST  %s %s | Origin: %r | Content-Type: %r",
+        request.method,
+        request.path,
+        request.headers.get("Origin", "—"),
+        request.headers.get("Content-Type", "—"),
+    )
+
+
 @app.after_request
-def add_no_cache_headers(response):
+def log_and_add_headers(response):
+    app.logger.info(
+        "RESPONSE %s %s → %s | Access-Control-Allow-Origin: %r",
+        request.method,
+        request.path,
+        response.status_code,
+        response.headers.get("Access-Control-Allow-Origin", "NOT SET"),
+    )
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    app.logger.exception("Unhandled exception on %s %s", request.method, request.path)
+    return jsonify({"success": False, "message": "Internal server error"}), 500
 
 
 @app.route("/api/subscribe", methods=["POST"])
@@ -100,7 +133,10 @@ def subscribe():
     name = (data.get("name") or "").strip()
     email = (data.get("email") or "").strip().lower()
 
+    app.logger.info("subscribe: name=%r email=%r", name, email)
+
     if not email or not EMAIL_RE.match(email):
+        app.logger.warning("subscribe: invalid email %r", email)
         return jsonify({"success": False, "message": "Please enter a valid email address."}), 400
 
     created_at = datetime.now(timezone.utc).isoformat()
@@ -112,8 +148,13 @@ def subscribe():
                     "INSERT INTO waitlist (name, email, created_at) VALUES (%s, %s, %s)",
                     (name, email, created_at),
                 )
+        app.logger.info("subscribe: inserted %r OK", email)
     except psycopg2.errors.UniqueViolation:
+        app.logger.info("subscribe: duplicate email %r", email)
         return jsonify({"success": True, "message": "You're already on the waitlist!"}), 200
+    except Exception as exc:
+        app.logger.exception("subscribe: DB error for %r: %s", email, exc)
+        return jsonify({"success": False, "message": "Database error, please try again."}), 500
 
     notify_sent = False
     welcome_sent = False
