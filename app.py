@@ -37,7 +37,8 @@ def send_emailjs(to_email, subject, message):
         },
     }
     response = requests.post(EMAILJS_API_URL, json=payload, timeout=15)
-    response.raise_for_status()
+    if not response.ok:
+        raise RuntimeError(f"{response.status_code} {response.text}")
     return response
 
 
