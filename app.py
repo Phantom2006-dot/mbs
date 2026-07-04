@@ -64,8 +64,9 @@ def subscribe():
     except sqlite3.IntegrityError:
         return jsonify({"success": True, "message": "You're already on the waitlist!"}), 200
 
-    email_sent = False
-    email_error = None
+    notify_sent = False
+    welcome_sent = False
+
     if resend.api_key:
         try:
             resend.Emails.send(
@@ -81,22 +82,44 @@ def subscribe():
                         f"<li><strong>Email:</strong> {email}</li>"
                         f"<li><strong>Submitted:</strong> {created_at}</li>"
                         f"</ul>"
+                        f"<p>{name or 'This person'} has subscribed to the waitlist.</p>"
                     ),
                 }
             )
-            email_sent = True
+            notify_sent = True
         except Exception as exc:
-            email_error = str(exc)
-            app.logger.error("Failed to send Resend notification: %s", email_error)
+            app.logger.error("Failed to send Resend notification to %s: %s", NOTIFY_EMAIL, exc)
+
+        try:
+            greeting_name = name.split(" ")[0] if name else "there"
+            resend.Emails.send(
+                {
+                    "from": f"Mindset Before Skillset <{FROM_EMAIL}>",
+                    "to": [email],
+                    "reply_to": NOTIFY_EMAIL,
+                    "subject": "Welcome to the Mindset Before Skillset Waitlist",
+                    "html": (
+                        f"<p>Hi {greeting_name},</p>"
+                        f"<p>Thank you for joining the waitlist for <strong>Mindset Before Skillset</strong> "
+                        f"by Oluwasegun Ajibola. You're officially on the list!</p>"
+                        f"<p>You'll be among the first to get early access, exclusive insights, "
+                        f"and behind-the-scenes content before the official launch.</p>"
+                        f"<p>Talk soon,<br>The Mindset Before Skillset Team</p>"
+                    ),
+                }
+            )
+            welcome_sent = True
+        except Exception as exc:
+            app.logger.error("Failed to send Resend welcome email to %s: %s", email, exc)
     else:
-        email_error = "RESEND_API_KEY not configured"
-        app.logger.warning(email_error)
+        app.logger.warning("RESEND_API_KEY not configured; skipping emails")
 
     return jsonify(
         {
             "success": True,
-            "message": "Thank you for joining the waitlist!",
-            "email_sent": email_sent,
+            "message": "Thank you for joining the waitlist! Check your inbox for a welcome email.",
+            "notify_sent": notify_sent,
+            "welcome_sent": welcome_sent,
         }
     )
 
