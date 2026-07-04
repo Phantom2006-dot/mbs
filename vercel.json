@@ -1,4 +1,5 @@
 {
+  "buildCommand": "bash build-dist.sh https://mbs-v8bxla.fly.dev",
   "outputDirectory": "dist",
   "cleanUrls": true
 }
