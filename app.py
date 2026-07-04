@@ -7,7 +7,7 @@ import requests
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
-app = Flask(__name__, static_folder=".", static_url_path="")
+app = Flask(__name__)
 
 # Allow the cPanel-hosted frontend (a different origin) to call this API.
 # Set FRONTEND_ORIGIN to your cPanel site's URL(s), comma-separated, e.g.
