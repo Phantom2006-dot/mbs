@@ -3,18 +3,42 @@ import re
 import sqlite3
 from datetime import datetime, timezone
 
-import resend
+import requests
 from flask import Flask, jsonify, request, send_from_directory
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "waitlist.db")
 NOTIFY_EMAIL = "subscribe@mindsetbeforeskillset.com"
-FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "onboarding@resend.dev")
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
-resend.api_key = os.environ.get("RESEND_API_KEY")
+EMAILJS_SERVICE_ID = os.environ.get("EMAILJS_SERVICE_ID")
+EMAILJS_TEMPLATE_ID = os.environ.get("EMAILJS_TEMPLATE_ID")
+EMAILJS_PUBLIC_KEY = os.environ.get("EMAILJS_PUBLIC_KEY")
+EMAILJS_PRIVATE_KEY = os.environ.get("EMAILJS_PRIVATE_KEY")
+EMAILJS_API_URL = "https://api.emailjs.com/api/v1.0/email/send"
+
+
+def emailjs_configured():
+    return all([EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY, EMAILJS_PRIVATE_KEY])
+
+
+def send_emailjs(to_email, subject, message):
+    payload = {
+        "service_id": EMAILJS_SERVICE_ID,
+        "template_id": EMAILJS_TEMPLATE_ID,
+        "user_id": EMAILJS_PUBLIC_KEY,
+        "accessToken": EMAILJS_PRIVATE_KEY,
+        "template_params": {
+            "to_email": to_email,
+            "subject": subject,
+            "message": message,
+        },
+    }
+    response = requests.post(EMAILJS_API_URL, json=payload, timeout=15)
+    response.raise_for_status()
+    return response
 
 
 def init_db():
@@ -67,52 +91,42 @@ def subscribe():
     notify_sent = False
     welcome_sent = False
 
-    if resend.api_key:
+    if emailjs_configured():
         try:
-            resend.Emails.send(
-                {
-                    "from": f"Mindset Before Skillset <{FROM_EMAIL}>",
-                    "to": [NOTIFY_EMAIL],
-                    "reply_to": email,
-                    "subject": "New Waitlist Signup",
-                    "html": (
-                        f"<p>New signup for the waitlist:</p>"
-                        f"<ul>"
-                        f"<li><strong>Name:</strong> {name or 'N/A'}</li>"
-                        f"<li><strong>Email:</strong> {email}</li>"
-                        f"<li><strong>Submitted:</strong> {created_at}</li>"
-                        f"</ul>"
-                        f"<p>{name or 'This person'} has subscribed to the waitlist.</p>"
-                    ),
-                }
+            send_emailjs(
+                to_email=NOTIFY_EMAIL,
+                subject="New Waitlist Signup",
+                message=(
+                    f"New signup for the waitlist:\n\n"
+                    f"Name: {name or 'N/A'}\n"
+                    f"Email: {email}\n"
+                    f"Submitted: {created_at}\n\n"
+                    f"{name or 'This person'} has subscribed to the waitlist."
+                ),
             )
             notify_sent = True
         except Exception as exc:
-            app.logger.error("Failed to send Resend notification to %s: %s", NOTIFY_EMAIL, exc)
+            app.logger.error("Failed to send EmailJS notification to %s: %s", NOTIFY_EMAIL, exc)
 
         try:
             greeting_name = name.split(" ")[0] if name else "there"
-            resend.Emails.send(
-                {
-                    "from": f"Mindset Before Skillset <{FROM_EMAIL}>",
-                    "to": [email],
-                    "reply_to": NOTIFY_EMAIL,
-                    "subject": "Welcome to the Mindset Before Skillset Waitlist",
-                    "html": (
-                        f"<p>Hi {greeting_name},</p>"
-                        f"<p>Thank you for joining the waitlist for <strong>Mindset Before Skillset</strong> "
-                        f"by Oluwasegun Ajibola. You're officially on the list!</p>"
-                        f"<p>You'll be among the first to get early access, exclusive insights, "
-                        f"and behind-the-scenes content before the official launch.</p>"
-                        f"<p>Talk soon,<br>The Mindset Before Skillset Team</p>"
-                    ),
-                }
+            send_emailjs(
+                to_email=email,
+                subject="Welcome to the Mindset Before Skillset Waitlist",
+                message=(
+                    f"Hi {greeting_name},\n\n"
+                    f"Thank you for joining the waitlist for Mindset Before Skillset "
+                    f"by Oluwasegun Ajibola. You're officially on the list!\n\n"
+                    f"You'll be among the first to get early access, exclusive insights, "
+                    f"and behind-the-scenes content before the official launch.\n\n"
+                    f"Talk soon,\nThe Mindset Before Skillset Team"
+                ),
             )
             welcome_sent = True
         except Exception as exc:
-            app.logger.error("Failed to send Resend welcome email to %s: %s", email, exc)
+            app.logger.error("Failed to send EmailJS welcome email to %s: %s", email, exc)
     else:
-        app.logger.warning("RESEND_API_KEY not configured; skipping emails")
+        app.logger.warning("EmailJS is not fully configured; skipping emails")
 
     return jsonify(
         {
