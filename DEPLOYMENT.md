@@ -2,116 +2,200 @@
 
 This project is split into two independently deployed pieces:
 
-- **Backend (API)** — Flask app (`app.py`) → deployed to **fly.io**
-- **Frontend (site)** — `dist/index.html` → uploaded to **cPanel**
+| Piece | What | Where |
+|---|---|---|
+| **Backend (API)** | `app.py` — Flask + NeonDB + EmailJS | **Fly.io** |
+| **Frontend (site)** | `dist/index.html` — static HTML/CSS/JS | **Vercel** or **cPanel** (your choice) |
 
 They talk to each other over HTTPS: the frontend calls the backend's public URL for `/api/subscribe`.
 
+> **Changed from the original guide:** The database is now **NeonDB (PostgreSQL)** — no SQLite volume or `fly volumes` needed.
+
 ---
 
-## 1. Deploy the backend to fly.io
+## 1. Build the frontend dist file
+
+Whenever you edit `index.html`, run this before deploying the frontend:
+
+```bash
+./build-dist.sh https://mbs-v8bxla.fly.dev
+```
+
+This copies `index.html` → `dist/index.html` and injects the correct backend URL.  
+Replace `https://mbs-v8bxla.fly.dev` with your actual Fly.io URL if you chose a different app name.
+
+`dist/index.html` is what you upload to cPanel or deploy to Vercel — never deploy the root `index.html` directly to a static host (it has an empty `API_BASE`).
+
+---
+
+## 2. Deploy the backend to Fly.io
 
 ### One-time setup
-1. Install the fly.io CLI: https://fly.io/docs/flyctl/install/
-2. Log in: `fly auth login`
 
-### Files already prepared for you
-- `Dockerfile` — builds the Flask app with gunicorn
-- `fly.toml` — fly.io app config (app name `mindset-before-skillset-api`, region `iad`, persistent volume for the database, `/health` check)
-- `requirements.txt` — Python dependencies (regenerate with `uv export --no-hashes --no-dev --format requirements-txt -o requirements.txt` if you add packages)
-- `.dockerignore` — keeps dev-only files out of the image
+```bash
+# Install the Fly CLI (once, on your machine)
+# macOS/Linux:
+curl -L https://fly.io/install.sh | sh
+# Windows: https://fly.io/docs/flyctl/install/
+
+fly auth login
+```
 
 ### First deploy
-From the project root:
 
 ```bash
-fly launch --no-deploy --copy-config --name mindset-before-skillset-api
-```
-This links the existing `fly.toml` to your fly.io account. If it asks to overwrite `fly.toml`, say no (keep the existing one).
-
-Create the persistent volume for the SQLite database (only once):
-```bash
-fly volumes create mindset_data --size 1 --region iad
+# Link fly.toml to your Fly account — say NO if asked to overwrite fly.toml
+fly launch --no-deploy --copy-config --name mbs-v8bxla
 ```
 
-Set your secrets (do this once; EmailJS won't send mail without them):
+Set all secrets (once):
+
 ```bash
+fly secrets set DATABASE_URL="postgresql://neondb_owner:...@....neon.tech/neondb?sslmode=require&channel_binding=require"
 fly secrets set EMAILJS_SERVICE_ID=service_wkrjxkm
 fly secrets set EMAILJS_TEMPLATE_ID=template_gwvclv8
 fly secrets set EMAILJS_PUBLIC_KEY=4vtpi89mVXCMesncv
 fly secrets set EMAILJS_PRIVATE_KEY=your_private_key_here
 ```
 
-Restrict CORS to your real domain (recommended once your cPanel site is live):
+Lock CORS to your frontend domain once it's live (swap in your real domain):
+
 ```bash
-fly secrets set FRONTEND_ORIGIN=https://yourdomain.com,https://www.yourdomain.com
+# Vercel:
+fly secrets set FRONTEND_ORIGIN=https://your-project.vercel.app,https://yourdomain.com
+
+# cPanel:
+fly secrets set FRONTEND_ORIGIN=https://mindsetbeforeskillset.com,https://www.mindsetbeforeskillset.com
 ```
-(If you skip this, the API accepts requests from any origin — fine for testing, less strict for production.)
+
+> Omit `FRONTEND_ORIGIN` (or leave it unset) to accept requests from any origin — fine while testing.
 
 Deploy:
+
 ```bash
 fly deploy
 ```
 
-Your API will be live at `https://mindset-before-skillset-api.fly.dev` (or whatever name you chose — check with `fly status`).
+Your API is live at `https://mbs-v8bxla.fly.dev` (confirm with `fly status`).
 
-### Every time you update the backend
+### Verify
+
+```bash
+curl https://mbs-v8bxla.fly.dev/health
+# → {"status": "ok"}
+```
+
+### Every future backend update
+
 ```bash
 fly deploy
 ```
-That's it — push your code, run `fly deploy`, done.
 
-### Verify it's working
-```bash
-curl https://mindset-before-skillset-api.fly.dev/health
-```
-Should return `{"status": "ok"}`.
+That's it — Fly builds and rolls out the new container automatically.
 
 ---
 
-## 2. Deploy the frontend to cPanel
+## 3a. Deploy the frontend to Vercel
 
-The `dist/` folder contains a ready-to-upload `index.html` with `API_BASE` already pointed at
-`https://mindset-before-skillset-api.fly.dev`.
+### One-time setup
 
-**If you used a different fly.io app name**, open `dist/index.html`, find this line near the top of the `<script>` block, and update it to match:
-```js
-const API_BASE = 'https://mbs-v8bxla.fly.dev';
+1. Push this repo to GitHub (if it isn't there already).
+2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import your GitHub repo.
+3. Vercel settings:
+   - **Framework Preset:** Other
+   - **Root Directory:** *(leave blank — root of repo)*
+   - **Build Command:** `bash build-dist.sh https://mbs-v8bxla.fly.dev`
+   - **Output Directory:** `dist`
+4. Click **Deploy**.
+
+Vercel reads `vercel.json` (already in the repo) which tells it to serve from `dist/`.
+
+### Custom domain on Vercel (optional)
+
+In your Vercel project → **Settings → Domains**, add your domain and follow the DNS instructions. Then tighten CORS on Fly:
+
+```bash
+fly secrets set FRONTEND_ORIGIN=https://yourdomain.com,https://www.yourdomain.com
 ```
 
-### Upload steps
-1. Log in to cPanel → **File Manager**.
-2. Navigate to `public_html` (or the subfolder for your domain/subdomain).
-3. Upload `dist/index.html` (rename to `index.html` if it isn't already — it already is).
-4. That's the entire site — no build step, no dependencies, just the one file.
+### Every future frontend update
 
-### Every time you update the frontend
-1. Edit `index.html` in the project as usual.
-2. Copy it into `dist/index.html`, making sure `API_BASE` still points at your fly.io URL:
-   ```bash
-   cp index.html dist/index.html
-   ```
-   Then re-apply the `API_BASE` line change described above (or keep a small diff/script if you prefer).
+Push to GitHub → Vercel redeploys automatically (it runs `build-dist.sh` as part of the build).
+
+---
+
+## 3b. Deploy the frontend to cPanel
+
+Use this if you host your domain on cPanel and prefer to upload files manually.
+
+### Build the dist file
+
+```bash
+./build-dist.sh https://mbs-v8bxla.fly.dev
+```
+
+### Upload
+
+1. Log in to cPanel → **File Manager**.
+2. Navigate to `public_html` (or your domain's subdirectory).
+3. Upload `dist/index.html` and rename it `index.html` if prompted.
+4. That's the entire site — one file, no build dependencies.
+
+### Every future frontend update
+
+1. Edit `index.html` in the project.
+2. Run `./build-dist.sh https://mbs-v8bxla.fly.dev`.
 3. Re-upload `dist/index.html` to cPanel, replacing the old one.
 
 ---
 
-## 3. How it fits together
+## 4. How it fits together
 
 ```
- Browser
-   |
-   |  loads page
-   v
-cPanel (dist/index.html)  --- fetch('https://mindset-before-skillset-api.fly.dev/api/subscribe') --->  fly.io (Flask API + SQLite volume + EmailJS)
+Browser
+  │
+  │  loads page
+  ▼
+Vercel or cPanel (dist/index.html)
+  │
+  │  POST /api/subscribe
+  ▼
+Fly.io  ──►  NeonDB (PostgreSQL)
+             EmailJS (welcome + notify emails)
 ```
 
-- The frontend is static HTML/CSS/JS — cPanel just serves the file, nothing to run.
-- The backend on fly.io handles `/api/subscribe`, stores signups in SQLite on a persistent volume (`/data/waitlist.db`), and sends emails via EmailJS.
-- CORS on the backend is controlled by the `FRONTEND_ORIGIN` secret so only your cPanel domain(s) can call the API in production.
+- The frontend is pure static HTML/CSS/JS — no server required.
+- The Fly.io backend handles `/api/subscribe` and `/api/waitlist/count`, stores signups in NeonDB, and fires emails via EmailJS.
+- CORS on the backend is locked to `FRONTEND_ORIGIN` so only your domain(s) can call the API in production.
 
-## Troubleshooting
-- **Signups fail / network error in browser console**: check that `API_BASE` in `dist/index.html` exactly matches your fly.io app URL (including `https://`, no trailing slash).
-- **CORS errors in browser console**: make sure `FRONTEND_ORIGIN` on fly.io includes the exact domain (with `https://`) the page is served from.
-- **Emails not sending**: run `fly secrets list` to confirm all four `EMAILJS_*` secrets are set, then check `fly logs` for errors.
-- **Database resets after deploy**: confirm the volume is attached — `fly volumes list` should show `mindset_data` mounted at `/data`.
+---
+
+## 5. Environment variables reference
+
+### Fly.io secrets (`fly secrets set KEY=value`)
+
+| Secret | Value | Required |
+|---|---|---|
+| `DATABASE_URL` | Your full NeonDB connection string | ✅ Yes |
+| `EMAILJS_SERVICE_ID` | `service_wkrjxkm` | For emails |
+| `EMAILJS_TEMPLATE_ID` | `template_gwvclv8` | For emails |
+| `EMAILJS_PUBLIC_KEY` | `4vtpi89mVXCMesncv` | For emails |
+| `EMAILJS_PRIVATE_KEY` | From EmailJS dashboard | For emails |
+| `FRONTEND_ORIGIN` | Comma-separated frontend URL(s) | Recommended |
+
+### Vercel environment variables (if using Vercel)
+
+None — the frontend is pure static HTML; all secrets live on Fly.io.
+
+---
+
+## 6. Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `curl /health` returns connection refused | `fly status` — check the machine is running; `fly logs` for errors |
+| Signups fail / network error in browser | Check `API_BASE` in `dist/index.html` exactly matches your Fly URL (no trailing slash) |
+| CORS error in browser console | Add the exact frontend origin (with `https://`) to `FRONTEND_ORIGIN` secret on Fly |
+| Emails not sending | `fly secrets list` — confirm all four `EMAILJS_*` secrets are set; `fly logs` for error details |
+| DB errors on Fly | Confirm `DATABASE_URL` secret is set with `fly secrets list`; test the connection string locally first |
+| Vercel build fails | Check Vercel build logs — usually a wrong Build Command or Output Directory setting |
