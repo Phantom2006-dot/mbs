@@ -1,0 +1,131 @@
+12:05:55
+Pulling container image registry.fly.io/mbs-v8bxla@sha256:04ac2fa29352b22d5a1c964b1a58a4b557dc3fec4d735b3c86a0d3ee4bfc34a6
+12:05:56
+Successfully prepared image registry.fly.io/mbs-v8bxla@sha256:04ac2fa29352b22d5a1c964b1a58a4b557dc3fec4d735b3c86a0d3ee4bfc34a6 (1.287791982s)
+12:05:56
+Setting up volume 'mindset_data'
+12:05:56
+Opening encrypted volume
+12:05:57
+Configuring firecracker
+12:05:57
+ INFO Sending signal SIGINT to main child process w/ PID 651
+12:05:57
+[2026-07-04 12:05:57 +0000] [651] [INFO] Handling signal: int
+12:05:57
+[2026-07-04 12:05:57 +0000] [661] [INFO] Worker exiting (pid: 661)
+12:05:57
+[2026-07-04 12:05:57 +0000] [662] [INFO] Worker exiting (pid: 662)
+12:05:57
+[2026-07-04 12:05:57 +0000] [651] [INFO] Shutting down: Master
+12:05:58
+ INFO Main child exited normally with code: 0
+12:05:58
+ INFO Starting clean up.
+12:05:58
+ INFO Umounting /dev/vdc from /data
+12:05:58
+[  390.279546] reboot: Restarting system
+12:05:59
+2026-07-04T12:05:59.008014803 [01KWPGAREWR3FHEB49V9C33CWH:main] Running Firecracker v1.14.4
+12:05:59
+2026-07-04T12:05:59.008154351 [01KWPGAREWR3FHEB49V9C33CWH:main] Listening on API socket ("/fc.sock").
+12:05:59
+ INFO Starting init (commit: ea887ee)...
+12:05:59
+ INFO Checking filesystem on /data
+12:05:59
+/dev/vdc: clean, 12/64512 files, 8789/258048 blocks
+12:05:59
+ INFO Mounting /dev/vdc at /data w/ uid: 0, gid: 0 and chmod 0755
+12:05:59
+ INFO Resized /data to 1056964608 bytes
+12:05:59
+ INFO Preparing to run: `gunicorn --bind 0.0.0.0:8080 --workers 2 --timeout 60 app:app` as root
+12:05:59
+ INFO [fly api proxy] listening at /.fly/api
+12:06:00
+Machine created and started in 4.468s
+12:06:00
+Health check 'servicecheck-00-http-8080' on port 8080 has failed. Your app is not responding properly. Services exposed on ports [80, 443] will have intermittent failures until the health check passes.
+12:06:00
+2026/07/04 12:06:00 INFO SSH listening listen_address=[fdaa:57:d148:a7b:46:50ff:63b1:2]:22
+12:06:00
+[2026-07-04 12:06:00 +0000] [651] [INFO] Starting gunicorn 26.0.0
+12:06:00
+[2026-07-04 12:06:00 +0000] [651] [INFO] Listening at: http://0.0.0.0:8080 (651)
+12:06:00
+[2026-07-04 12:06:00 +0000] [651] [INFO] Using worker: sync
+12:06:00
+[2026-07-04 12:06:00 +0000] [661] [INFO] Booting worker with pid: 661
+12:06:00
+[2026-07-04 12:06:00 +0000] [662] [INFO] Booting worker with pid: 662
+12:06:01
+[2026-07-04 12:06:01 +0000] [651] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl
+12:06:01
+2026-07-04 12:06:01,802 [INFO] === STARTUP: CORS allowed origins = ['https://mbs-snowy.vercel.app/'] ===
+12:06:01
+2026-07-04 12:06:01,804 [INFO] === STARTUP: CORS allowed origins = ['https://mbs-snowy.vercel.app/'] ===
+12:06:01
+2026-07-04 12:06:01,805 [INFO] === STARTUP: DATABASE_URL is set ===
+12:06:01
+2026-07-04 12:06:01,805 [INFO] === STARTUP: DATABASE_URL is set ===
+12:06:04
+2026-07-04 12:06:04,521 [INFO] === STARTUP: DB table ready ===
+12:06:04
+2026-07-04 12:06:04,523 [INFO] === STARTUP: DB table ready ===
+12:06:04
+2026-07-04 12:06:04,527 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+Region
+ams
+Instance
+78120e6f4171e8
+Provider
+app
+Level
+info
+Full Message
+2026-07-04 12:06:04,527 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+Copy as JSON
+12:06:04
+2026-07-04 12:06:04,528 [INFO] RESPONSE GET /health → 200 | Access-Control-Allow-Origin: 'NOT SET'
+12:06:05
+Health check 'servicecheck-00-http-8080' on port 8080 is now passing.
+12:06:34
+2026-07-04 12:06:34,533 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+12:06:34
+2026-07-04 12:06:34,534 [INFO] RESPONSE GET /health → 200 | Access-Control-Allow-Origin: 'NOT SET'
+12:07:04
+2026-07-04 12:07:04,538 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+12:07:04
+2026-07-04 12:07:04,538 [INFO] RESPONSE GET /health → 200 | Access-Control-Allow-Origin: 'NOT SET'
+12:07:07
+2026-07-04 12:07:07,414 [INFO] REQUEST  OPTIONS /api/subscribe | Origin: 'https://mbs-snowy.vercel.app' | Content-Type: '—'
+12:07:07
+2026-07-04 12:07:07,415 [INFO] RESPONSE OPTIONS /api/subscribe → 200 | Access-Control-Allow-Origin: 'NOT SET'
+12:07:34
+2026-07-04 12:07:34,542 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+12:07:34
+2026-07-04 12:07:34,542 [INFO] RESPONSE GET /health → 200 | Access-Control-Allow-Origin: 'NOT SET'
+12:08:04
+2026-07-04 12:08:04,546 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+12:08:04
+2026-07-04 12:08:04,546 [INFO] RESPONSE GET /health → 200 | Access-Control-Allow-Origin: 'NOT SET'
+12:08:34
+2026-07-04 12:08:34,550 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+12:08:34
+2026-07-04 12:08:34,550 [INFO] RESPONSE GET /health → 200 | Access-Control-Allow-Origin: 'NOT SET'
+12:09:04
+2026-07-04 12:09:04,554 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+12:09:04
+2026-07-04 12:09:04,554 [INFO] RESPONSE GET /health → 200 | Access-Control-Allow-Origin: 'NOT SET'
+12:09:34
+2026-07-04 12:09:34,558 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+12:09:34
+2026-07-04 12:09:34,558 [INFO] RESPONSE GET /health → 200 | Access-Control-Allow-Origin: 'NOT SET'
+12:10:04
+2026-07-04 12:10:04,562 [INFO] REQUEST  GET /health | Origin: '—' | Content-Type: '—'
+12:10:04
+2026-07-04 12:10:04,562 [INFO] RESPONSE GET /health → 200 | Access-Control-Allow-Origin: 'NOT SET'
+
+started
