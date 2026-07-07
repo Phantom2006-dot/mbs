@@ -180,14 +180,20 @@ def subscribe():
             greeting_name = name.split(" ")[0] if name else "there"
             send_emailjs(
                 to_email=email,
-                subject="Welcome to the Mindset Before Skillset Waitlist",
+                subject="Welcome to the Mindset Before Skillset® Waitlist",
                 message=(
                     f"Hi {greeting_name},\n\n"
-                    f"Thank you for joining the waitlist for Mindset Before Skillset "
-                    f"by Oluwasegun Ajibola. You're officially on the list!\n\n"
-                    f"You'll be among the first to get early access, exclusive insights, "
-                    f"and behind-the-scenes content before the official launch.\n\n"
-                    f"Talk soon,\nThe Mindset Before Skillset Team"
+                    f"Thank you for joining the Mindset Before Skillset® waitlist.\n\n"
+                    f"We’re delighted to have you with us.\n\n"
+                    f"As a waitlist member, you’ll be among the first to receive updates on the book’s release, "
+                    f"exclusive insights, behind the scenes content, and early access opportunities before the official launch.\n\n"
+                    f"This is more than a book. It’s the beginning of a community committed to developing the mindset "
+                    f"that comes before lasting success.\n\n"
+                    f"Thank you for being part of the journey. We look forward to sharing more with you soon.\n\n"
+                    f"Warm regards,\n\n"
+                    f"Oluwasegun Ajibola\n"
+                    f"Author, Mindset Before Skillset®\n"
+                    f"www.mindsetbeforeskillset.com"
                 ),
             )
             welcome_sent = True
